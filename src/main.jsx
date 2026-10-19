@@ -1405,7 +1405,7 @@ function App() {
         <div className="heroContent">
 
           <div className="eyebrow heroLine">
-            SOFTWARE ENGINEER / FULL STACK / AI & SYSTEMS
+            SOFTWARE ENGINEER | FULL STACK DEVELOPER
           </div>
 
           <h1 key={loopKey}>

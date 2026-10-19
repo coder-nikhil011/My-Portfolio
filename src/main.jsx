@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useGLTF, Environment } from "@react-three/drei";
 import * as THREE from "three";
 import "./index.css";
@@ -119,6 +119,7 @@ function Drone({ heroRef, aboutRef, skillsRef, experienceRef, codingRef, project
     motorPower: 0,    // 0 = off, 1 = full spin
     scrollVelocity: 0,
     hasScrolled: false, // becomes true when first section trigger fires
+    isLanding: false,
   });
 
   useEffect(() => {
@@ -199,6 +200,7 @@ function Drone({ heroRef, aboutRef, skillsRef, experienceRef, codingRef, project
                 motorPower: 0,
                 scrollVelocity: 0,
                 hasScrolled: false,
+                isLanding: false,
               });
               return;
             }
@@ -212,8 +214,12 @@ function Drone({ heroRef, aboutRef, skillsRef, experienceRef, codingRef, project
             target.rotY       = p(kf.from.rotY,       kf.to.rotY,       e);
             target.rotZ       = p(kf.from.rotZ,       kf.to.rotZ,       e);
             target.scale      = p(kf.from.scale,      kf.to.scale,      e);
-            target.motorPower = p(kf.from.motorPower, kf.to.motorPower, e);
+            target.motorPower =
+              kf.trigger === contactRef.current && self.direction < 0
+                ? 1
+                : p(kf.from.motorPower, kf.to.motorPower, e);
             target.scrollVelocity = Math.abs(self.getVelocity());
+            target.isLanding = kf.trigger === contactRef.current;
             if (!target.hasScrolled) target.hasScrolled = true;
           },
         });
@@ -244,6 +250,8 @@ function Drone({ heroRef, aboutRef, skillsRef, experienceRef, codingRef, project
 
 function DroneModel({ flightState }) {
   const { scene } = useGLTF("/drone_separated.glb");
+  const { size } = useThree();
+  const viewportScale = Math.min(1, Math.max(0.36, size.width / 1000));
   const mainGroup = useRef(null);
   const gimbalNode = useRef(null);
   const lensNode = useRef(null);
@@ -252,8 +260,16 @@ function DroneModel({ flightState }) {
   const mousePos = useRef({ x: 0, y: 0 });
   const smoothedMouse = useRef({ x: 0, y: 0 });
   const bladeSpin = useRef(0);
+  const reducedMotion = useRef(false);
 
   useEffect(() => {
+    const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const updateMotionPreference = () => {
+      reducedMotion.current = motionPreference.matches;
+    };
+    updateMotionPreference();
+    motionPreference.addEventListener("change", updateMotionPreference);
+
     // Enable DoubleSide and reflections across all meshes
     scene.traverse((child) => {
       if (child.isMesh && child.material) {
@@ -296,7 +312,10 @@ function DroneModel({ flightState }) {
       mousePos.current.y = -(e.clientY / window.innerHeight) * 2 + 1;
     };
     window.addEventListener("mousemove", onMove);
-    return () => window.removeEventListener("mousemove", onMove);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      motionPreference.removeEventListener("change", updateMotionPreference);
+    };
   }, [scene]);
 
   useFrame((state, delta) => {
@@ -312,13 +331,12 @@ function DroneModel({ flightState }) {
     prevPos.current.x = target.x;
     prevPos.current.y = target.y;
 
-    const rollLean = -vx * 0.35;
-    const pitchLean = vy * 0.25;
+    const rollLean = reducedMotion.current ? 0 : -vx * 0.35;
+    const pitchLean = reducedMotion.current ? 0 : vy * 0.25;
 
     // Reduced mouse influence: only camera gimbal follows cursor; drone body stays on path
-    const mouseLookX = -mousePos.current.y * 0.15; // reduced pitch
-    const mouseLookY = mousePos.current.x * 0.20;  // reduced yaw
-    const mouseBank  = 0; // no roll banking from cursor
+    const mouseLookX = reducedMotion.current ? 0 : -mousePos.current.y * 0.15;
+    const mouseLookY = reducedMotion.current ? 0 : mousePos.current.x * 0.20;
     const motorPower = target.motorPower;
 
     smoothedMouse.current.x = lerp(smoothedMouse.current.x, mouseLookX * motorPower, delta * 4);
@@ -330,16 +348,22 @@ function DroneModel({ flightState }) {
 
     // Smooth hover sway
     const t = state.clock.elapsedTime;
-    const ySway = Math.sin(t * 1.5) * 0.02 * motorPower;
-    const xSway = Math.cos(t * 1.1) * 0.015 * motorPower;
+    const ySway = reducedMotion.current ? 0 : Math.sin(t * 1.5) * 0.02 * motorPower;
+    const xSway = reducedMotion.current ? 0 : Math.cos(t * 1.1) * 0.015 * motorPower;
 
-    g.position.x = lerp(g.position.x, target.x + parallaxX + xSway, delta * 4.5);
-    g.position.y = lerp(g.position.y, target.y + parallaxY + ySway, delta * 4.5);
-    g.position.z = lerp(g.position.z, target.z, delta * 4.5);
+    const positionLerp = reducedMotion.current ? 12 : 4.5;
+    const landingOffset = target.isLanding
+      ? (size.width <= 550 ? -0.7 : size.width > 550 ? -0.48 : 0)
+      : 0;
+    g.position.x = lerp(g.position.x, target.x * viewportScale + parallaxX + xSway * viewportScale, delta * positionLerp);
+    g.position.y = lerp(g.position.y, target.y + landingOffset + parallaxY + ySway, delta * positionLerp);
+    g.position.z = lerp(g.position.z, target.z, delta * positionLerp);
 
-    g.scale.x = lerp(g.scale.x, target.scale, delta * 4.5);
-    g.scale.y = lerp(g.scale.y, target.scale, delta * 4.5);
-    g.scale.z = lerp(g.scale.z, target.scale, delta * 4.5);
+    const landingScale = target.isLanding && size.width > 550 ? 0.82 : 1;
+    const modelScale = target.scale * viewportScale * landingScale;
+    g.scale.x = lerp(g.scale.x, modelScale, delta * positionLerp);
+    g.scale.y = lerp(g.scale.y, modelScale, delta * positionLerp);
+    g.scale.z = lerp(g.scale.z, modelScale, delta * positionLerp);
 
         // Apply pitch, yaw, and banking to main drone body (now independent of mouse)
     g.rotation.x = lerp(g.rotation.x, target.rotX + pitchLean, delta * 5);
@@ -357,7 +381,9 @@ function DroneModel({ flightState }) {
     }
 
     // 4 Real propeller blades spin smoothly
-    const bladeTargetSpeed = (55 + Math.min(target.scrollVelocity * 0.05, 30)) * motorPower;
+    const bladeTargetSpeed = reducedMotion.current
+      ? 12 * motorPower
+      : (55 + Math.min(target.scrollVelocity * 0.05, 30)) * motorPower;
     bladeSpin.current = lerp(bladeSpin.current, bladeTargetSpeed, delta * 4);
     bladeRefs.current.forEach((blade, i) => {
       if (blade) blade.rotation.y += delta * bladeSpin.current * (i % 2 === 0 ? 1 : -1);
@@ -365,7 +391,7 @@ function DroneModel({ flightState }) {
   });
 
   return (
-    <group ref={mainGroup} position={[1.55, 0.2, 0.5]} scale={0.68}>
+    <group ref={mainGroup} position={[1.55 * viewportScale, 0.2, 0.5]} scale={0.68 * viewportScale}>
       <primitive object={scene} scale={0.88} />
     </group>
   );
@@ -539,29 +565,102 @@ function Experience() {
    CODING PLATFORMS & LIVE TELEMETRY
 ===================================================== */
 
+function ProfileStatus({ status }) {
+  const label = {
+    loading: "LOADING",
+    live: "LIVE",
+    unavailable: "UNAVAILABLE",
+  }[status];
+
+  return (
+    <span className={`liveBadge status-${status}`} aria-live="polite">
+      {status === "live" && <span className="liveDot" />}
+      {label}
+    </span>
+  );
+}
+
 function CodingProfiles() {
-  const [gitData,   setGitData]   = useState({ repos: 0, followers: 0, following: 0 });
-  const [leetStats, setLeetStats] = useState({ solved: 0, easy: 0, medium: 0, hard: 0, rate: "0.00" });
-  const [ccStats,   setCcStats]   = useState({ rating: 0, stars: "?", globalRank: 0, countryRank: 0 });
-  const [hrBadges,  setHrBadges]  = useState(0);
-  const [gfgStats,  setGfgStats]  = useState({ solved: 0, easy: 0, medium: 0, hard: 0, score: 0 });
+  const [gitData, setGitData] = useState({
+    status: "loading",
+    repos: null,
+    followers: null,
+    following: null,
+  });
+  const [leetStats, setLeetStats] = useState({
+    status: "loading",
+    solved: null,
+    easy: null,
+    medium: null,
+    hard: null,
+    ranking: null,
+    totalEasy: null,
+    totalMedium: null,
+    totalHard: null,
+  });
 
   useEffect(() => {
-    /* GitHub */
-    fetch("https://api.github.com/users/coder-nikhil011")
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d) setGitData({ repos: d.public_repos || 0, followers: d.followers || 0, following: d.following || 0 }); })
-      .catch(() => {});
+    const controller = new AbortController();
+    const getJson = async (url) => {
+      const response = await fetch(url, { signal: controller.signal });
+      if (!response.ok) {
+        throw new Error(`Profile API returned HTTP ${response.status}`);
+      }
+      return response.json();
+    };
 
-    /* LeetCode */
-    fetch("https://alfa-leetcode-api.onrender.com/userProfile/Coding_ninja076")
-      .then(r => r.ok ? r.json() : null)
-      .then(d => {
-        if (d && d.totalSolved != null)
-          setLeetStats({ solved: d.totalSolved, easy: d.easySolved || 0, medium: d.mediumSolved || 0, hard: d.hardSolved || 0,
-            rate: typeof d.acceptanceRate === "number" ? d.acceptanceRate.toFixed(2) : (d.acceptanceRate || "—") });
-      }).catch(() => {});
+    getJson("https://api.github.com/users/coder-nikhil011")
+      .then((data) => {
+        if (
+          !Number.isFinite(data.public_repos) ||
+          !Number.isFinite(data.followers) ||
+          !Number.isFinite(data.following)
+        ) {
+          throw new Error("GitHub profile response is missing statistics");
+        }
+        setGitData({
+          status: "live",
+          repos: data.public_repos,
+          followers: data.followers,
+          following: data.following,
+        });
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+        console.error("Unable to load GitHub profile statistics:", error);
+        setGitData((current) => ({ ...current, status: "unavailable" }));
+      });
 
+    getJson("https://alfa-leetcode-api.onrender.com/userProfile/Coding_ninja076")
+      .then((data) => {
+        if (
+          !Number.isFinite(data.totalSolved) ||
+          !Number.isFinite(data.easySolved) ||
+          !Number.isFinite(data.mediumSolved) ||
+          !Number.isFinite(data.hardSolved) ||
+          !Number.isFinite(data.ranking)
+        ) {
+          throw new Error("LeetCode profile response is missing statistics");
+        }
+        setLeetStats({
+          status: "live",
+          solved: data.totalSolved,
+          easy: data.easySolved,
+          medium: data.mediumSolved,
+          hard: data.hardSolved,
+          ranking: data.ranking,
+          totalEasy: data.totalEasy,
+          totalMedium: data.totalMedium,
+          totalHard: data.totalHard,
+        });
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+        console.error("Unable to load LeetCode profile statistics:", error);
+        setLeetStats((current) => ({ ...current, status: "unavailable" }));
+      });
+
+    return () => controller.abort();
   }, []);
 
   return (
@@ -580,16 +679,16 @@ function CodingProfiles() {
           <div>
             <div className="cardHeader">
               <div><span className="cardTag">LEETCODE</span><h3>@Coding_ninja076</h3></div>
-              <span className="liveBadge"><span className="liveDot" /> LIVE</span>
+              <ProfileStatus status={leetStats.status} />
             </div>
             <div className="statsRow">
-              <div className="statBox highlight"><strong>{leetStats.solved}</strong><span>SOLVED</span></div>
-              <div className="statBox"><strong>{leetStats.rate}%</strong><span>ACCEPTANCE</span></div>
+              <div className="statBox highlight"><strong>{leetStats.solved ?? "—"}</strong><span>SOLVED</span></div>
+              <div className="statBox"><strong>{leetStats.ranking?.toLocaleString() ?? "—"}</strong><span>GLOBAL RANK</span></div>
             </div>
             <div className="diffBars">
-              <div className="diffCol"><span className="diffLabel">EASY</span><strong className="easyText">{leetStats.easy}</strong><div className="barTrack"><div className="barFill easyBar" style={{width:"70%"}} /></div></div>
-              <div className="diffCol"><span className="diffLabel">MEDIUM</span><strong className="medText">{leetStats.medium}</strong><div className="barTrack"><div className="barFill medBar" style={{width:"85%"}} /></div></div>
-              <div className="diffCol"><span className="diffLabel">HARD</span><strong className="hardText">{leetStats.hard}</strong><div className="barTrack"><div className="barFill hardBar" style={{width:"35%"}} /></div></div>
+              <div className="diffCol"><span className="diffLabel">EASY</span><strong className="easyText">{leetStats.easy ?? "—"}</strong><div className="barTrack"><div className="barFill easyBar" style={{width:`${leetStats.easy && leetStats.totalEasy ? Math.min(100, leetStats.easy / leetStats.totalEasy * 100) : 0}%`}} /></div></div>
+              <div className="diffCol"><span className="diffLabel">MEDIUM</span><strong className="medText">{leetStats.medium ?? "—"}</strong><div className="barTrack"><div className="barFill medBar" style={{width:`${leetStats.medium && leetStats.totalMedium ? Math.min(100, leetStats.medium / leetStats.totalMedium * 100) : 0}%`}} /></div></div>
+              <div className="diffCol"><span className="diffLabel">HARD</span><strong className="hardText">{leetStats.hard ?? "—"}</strong><div className="barTrack"><div className="barFill hardBar" style={{width:`${leetStats.hard && leetStats.totalHard ? Math.min(100, leetStats.hard / leetStats.totalHard * 100) : 0}%`}} /></div></div>
             </div>
           </div>
           <a href="https://leetcode.com/u/Coding_ninja076" target="_blank" rel="noreferrer" className="profileActionLink">OPEN PROFILE <Arrow /></a>
@@ -600,12 +699,12 @@ function CodingProfiles() {
           <div>
             <div className="cardHeader">
               <div><span className="cardTag">GITHUB</span><h3>@coder-nikhil011</h3></div>
-              <span className="liveBadge"><span className="liveDot" /> LIVE</span>
+              <ProfileStatus status={gitData.status} />
             </div>
             <div className="statsRow">
-              <div className="statBox highlight"><strong>{gitData.repos}</strong><span>REPOS</span></div>
-              <div className="statBox"><strong>{gitData.followers}</strong><span>FOLLOWERS</span></div>
-              <div className="statBox"><strong>{gitData.following}</strong><span>FOLLOWING</span></div>
+              <div className="statBox highlight"><strong>{gitData.repos ?? "—"}</strong><span>REPOS</span></div>
+              <div className="statBox"><strong>{gitData.followers ?? "—"}</strong><span>FOLLOWERS</span></div>
+              <div className="statBox"><strong>{gitData.following ?? "—"}</strong><span>FOLLOWING</span></div>
             </div>
             <div className="techStackTags">
               <span>MERN STACK</span><span>DSA</span><span>GENAI</span><span>OPEN SOURCE</span>
@@ -742,6 +841,17 @@ function Education() {
 ===================================================== */
 
 function Contact() {
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const name = formData.get("name");
+    const email = formData.get("email");
+    const message = formData.get("message");
+    const subject = `Portfolio inquiry from ${name}`;
+    const body = `Name: ${name}\nEmail: ${email}\n\n${message}`;
+    window.location.href = `mailto:unikhil723@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  };
+
   return (
     <section id="contact" className="section contact">
 
@@ -783,6 +893,30 @@ function Contact() {
 
       </div>
 
+      <form className="contactForm" onSubmit={handleSubmit}>
+        <div className="contactFormHeading">
+          <h3>OR SEND A MESSAGE</h3>
+          <p>Opens your email app with a ready-to-send draft.</p>
+        </div>
+        <div className="contactFormFields">
+          <label>
+            YOUR NAME
+            <input name="name" autoComplete="name" required />
+          </label>
+          <label>
+            YOUR EMAIL
+            <input name="email" type="email" autoComplete="email" required />
+          </label>
+          <label className="messageField">
+            MESSAGE
+            <textarea name="message" rows="3" required />
+          </label>
+        </div>
+        <button type="submit" className="contactSubmit">
+          OPEN EMAIL DRAFT <Arrow />
+        </button>
+      </form>
+
       <footer>
         <span>NIKHIL KUMAR / SOFTWARE ENGINEER</span>
         <span>© 2026</span>
@@ -796,6 +930,51 @@ function Contact() {
 /* =====================================================
    CUSTOM CURSOR (Riotters Smooth Interactive Tracking)
 ===================================================== */
+
+function ScrollProgress() {
+  const progressRef = useRef(null);
+
+  useEffect(() => {
+    let frame = 0;
+    const update = () => {
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+        const progress = maxScroll > 0 ? Math.min(1, window.scrollY / maxScroll) : 0;
+        const element = progressRef.current;
+        if (element) {
+          const fill = element.firstElementChild;
+          if (fill) fill.style.transform = `scaleX(${progress})`;
+          element.setAttribute("aria-valuenow", String(Math.round(progress * 100)));
+        }
+      });
+    };
+
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    update();
+    return () => {
+      window.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, []);
+
+  return (
+    <div
+      className="scrollProgress"
+      ref={progressRef}
+      role="progressbar"
+      aria-label="Page scroll progress"
+      aria-valuemin="0"
+      aria-valuemax="100"
+      aria-valuenow="0"
+    >
+      <span />
+    </div>
+  );
+}
 
 function CustomCursor() {
   const dotRef = useRef(null);
@@ -869,6 +1048,7 @@ function App() {
   const [menu, setMenu] = useState(false);
 
   useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
     const ctx = gsap.context(() => {
 
@@ -906,6 +1086,8 @@ function App() {
 
   return (
     <div className="site">
+
+      <ScrollProgress />
 
       <CustomCursor />
 
@@ -978,6 +1160,13 @@ function App() {
             with data structures and create useful
             digital experiences.
           </p>
+
+          <div className="heroActions heroLine">
+            <a href="/Resume_NIKHIL.pdf" download className="resumeLink">
+              DOWNLOAD RESUME <Arrow />
+            </a>
+            <a href="#projects" className="textAction">VIEW PROJECTS ↓</a>
+          </div>
 
         </div>
 

@@ -37,6 +37,24 @@ button {
   overflow: hidden;
 }
 
+.scrollProgress {
+  position: fixed;
+  z-index: 110;
+  inset: 0 0 auto;
+  height: 3px;
+  pointer-events: none;
+  background: rgba(229, 42, 32, 0.12);
+}
+
+.scrollProgress span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--red);
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+
 
 /* ================= NAV ================= */
 
@@ -191,6 +209,52 @@ button {
   color: #555;
   font-size: 14px;
   line-height: 1.65;
+}
+
+.heroActions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin-top: 28px;
+}
+
+.resumeLink,
+.textAction {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  font-family: monospace;
+  font-size: 9px;
+  letter-spacing: .14em;
+}
+
+.resumeLink {
+  padding: 8px 8px 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 30px;
+  transition: background .25s ease, color .25s ease, border-color .25s ease;
+}
+
+.resumeLink:hover {
+  background: var(--black);
+  border-color: var(--black);
+  color: #fff;
+}
+
+.resumeLink .arrow {
+  width: 28px;
+  height: 28px;
+  font-size: 12px;
+}
+
+.textAction {
+  color: #666;
+  transition: color .2s ease;
+}
+
+.textAction:hover {
+  color: var(--red);
 }
 
 .heroBottom {
@@ -551,6 +615,18 @@ button {
   border: 1px solid rgba(0, 186, 124, 0.25);
 }
 
+.status-loading {
+  color: #777;
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+.status-unavailable {
+  color: #a04b20;
+  background: rgba(160, 75, 32, 0.08);
+  border-color: rgba(160, 75, 32, 0.2);
+}
+
 .liveDot {
   width: 6px;
   height: 6px;
@@ -868,6 +944,12 @@ button {
   justify-content: space-between;
 }
 
+@media (min-width: 901px) {
+  .contact {
+    padding-bottom: 200px;
+  }
+}
+
 .contact .sectionTop span:last-child {
   color: #777;
 }
@@ -926,6 +1008,110 @@ button {
   color: #ffffff;
   border-color: #111111;
   transform: rotate(45deg);
+}
+
+.contactForm {
+  display: grid;
+  grid-template-columns: minmax(180px, .7fr) minmax(0, 1.6fr) auto;
+  align-items: end;
+  gap: 24px;
+  margin: 42px 0 48px;
+  padding: 24px;
+  border: 1px solid #333;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.contactFormHeading h3 {
+  margin: 0 0 8px;
+  font-family: monospace;
+  font-size: 10px;
+  letter-spacing: .14em;
+}
+
+.contactFormHeading p {
+  max-width: 220px;
+  margin: 0;
+  color: #888;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.contactFormFields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.contactFormFields label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: #aaa;
+  font-family: monospace;
+  font-size: 8px;
+  letter-spacing: .14em;
+}
+
+.contactFormFields input,
+.contactFormFields textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #3a3a3a;
+  border-radius: 5px;
+  outline: none;
+  background: #181818;
+  color: white;
+  font: 14px Arial, Helvetica, sans-serif;
+  letter-spacing: normal;
+  resize: vertical;
+  transition: border-color .2s ease;
+}
+
+.contactFormFields input:focus,
+.contactFormFields textarea:focus {
+  border-color: #00f0ff;
+}
+
+.messageField {
+  grid-column: 1 / -1;
+}
+
+.contactSubmit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 175px;
+  padding: 8px 8px 8px 14px;
+  border: 1px solid #444;
+  border-radius: 30px;
+  background: transparent;
+  color: white;
+  font-family: monospace;
+  font-size: 8px;
+  letter-spacing: .12em;
+  cursor: pointer;
+  transition: background .25s ease, color .25s ease, border-color .25s ease;
+}
+
+.contactSubmit:hover {
+  background: white;
+  border-color: white;
+  color: #111;
+}
+
+.contactSubmit .arrow {
+  width: 28px;
+  height: 28px;
+  border-color: #444;
+  color: white;
+}
+
+.contactSubmit:hover .arrow {
+  border-color: #111;
+  background: #111;
+  color: white;
 }
 
 /* ================= CUSTOM CURSOR (Riotters Smooth Interactive Tracking) ================= */
@@ -1092,6 +1278,18 @@ footer {
     display: none;
   }
 
+  .contactForm {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .contactFormHeading {
+    grid-column: 1 / -1;
+  }
+
+  .contactSubmit {
+    justify-self: start;
+  }
+
 }
 
 
@@ -1115,4 +1313,56 @@ footer {
     font-size: 11vw;
   }
 
+  .heroActions {
+    gap: 14px;
+  }
+
+  .contactForm {
+    grid-template-columns: 1fr;
+    padding: 18px;
+    gap: 20px;
+  }
+
+  .contactFormHeading,
+  .messageField {
+    grid-column: auto;
+  }
+
+  .contactFormFields {
+    grid-template-columns: 1fr;
+  }
+
+  .contactSubmit {
+    width: 100%;
+  }
+
+  .contactBottom,
+  .contactForm,
+  .contact footer {
+    position: relative;
+    z-index: 31;
+  }
+
+}
+
+@media (hover: none), (pointer: coarse) {
+  .customCursorDot,
+  .customCursorRing {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+  }
 }

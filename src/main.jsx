@@ -1250,11 +1250,35 @@ function CustomCursor() {
 
 
 /* =====================================================
-   APP
+   TYPEWRITER EFFECT
 ===================================================== */
+
+function Typewriter({ text, trigger = true, onComplete }) {
+  const [currentText, setCurrentText] = useState("");
+
+  useEffect(() => {
+    if (!trigger) return;
+
+    let timeout;
+    const type = (idx) => {
+      if (idx < text.length) {
+        setCurrentText((prev) => prev + text[idx]);
+        timeout = setTimeout(() => type(idx + 1), 100);
+      } else if (onComplete) {
+        onComplete();
+      }
+    };
+
+    type(0);
+    return () => clearTimeout(timeout);
+  }, [trigger, text, onComplete]);
+
+  return <span>{currentText}</span>;
+}
 
 function App() {
 
+  const [showKumar, setShowKumar] = useState(false);
   const heroRef = useRef(null);
   const aboutRef = useRef(null);
   const skillsRef = useRef(null);
@@ -1365,11 +1389,17 @@ function App() {
           <h1>
 
             <span className="heroLine">
-              NIKHIL
+              <Typewriter 
+                text="NIKHIL" 
+                onComplete={() => setShowKumar(true)} 
+              />
             </span>
 
-            <span className="heroLine">
-              KUMAR<span className="red">.</span>
+            <span className="heroLine" >
+              <Typewriter 
+                text="KUMAR" 
+                trigger={showKumar} 
+              />
             </span>
 
           </h1>

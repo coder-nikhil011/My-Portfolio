@@ -553,7 +553,7 @@ button {
 
 .codingGrid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
   margin-top: 30px;
 }
@@ -563,6 +563,7 @@ button {
 }
 
 .codingCard {
+  min-width: 0;
   background: var(--white);
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -643,12 +644,21 @@ button {
 
 .statsRow {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
   gap: 10px;
   margin-bottom: 16px;
 }
 
+.leetcodeStatsRow {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.githubStatsRow {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .statBox {
+  min-width: 0;
   padding: 10px 12px;
   background: #f7f7f4;
   border-radius: 6px;
@@ -673,6 +683,7 @@ button {
   font-size: 7px;
   letter-spacing: .12em;
   color: #777;
+  overflow-wrap: anywhere;
 }
 
 .diffBars {
@@ -781,6 +792,7 @@ button {
 }
 
 .contributionScroll {
+  min-width: 0;
   overflow-x: auto;
   padding: 2px 0 7px;
 }

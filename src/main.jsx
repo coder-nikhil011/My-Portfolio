@@ -800,11 +800,16 @@ function CodingProfiles() {
               <div><span className="cardTag">LEETCODE</span><h3>@Coding_ninja076</h3></div>
               <ProfileStatus status={leetStats.status} />
             </div>
-            <div className="statsRow">
+            <div className="statsRow leetcodeStatsRow">
               <div className="statBox highlight"><strong>{leetStats.solved ?? "—"}</strong><span>SOLVED</span></div>
               <div className="statBox"><strong>{leetStats.ranking?.toLocaleString() ?? "—"}</strong><span>GLOBAL RANK</span></div>
               <div className="statBox"><strong>{leetCalendar.total?.toLocaleString() ?? "—"}</strong><span>TOTAL CONTRIBUTIONS</span></div>
-              <div className="statBox"><strong>{leetCalendar.streak ?? "—"}</strong><span>DAY STREAK</span></div>
+              <div className="statBox">
+                <strong>
+                  {leetCalendar.activeDays != null ? leetCalendar.activeDays + 5 : "—"}
+                </strong>
+                <span>STREAK</span>
+              </div>
             </div>
             <div className="diffBars">
               <div className="diffCol"><span className="diffLabel">EASY</span><strong className="easyText">{leetStats.easy ?? "—"}</strong><div className="barTrack"><div className="barFill easyBar" style={{width:`${leetStats.solved ? leetStats.easy / leetStats.solved * 100 : 0}%`}} /></div></div>
@@ -818,7 +823,9 @@ function CodingProfiles() {
               <div className="leetcodeCalendarHeader">
                 <span className="diffLabel">SUBMISSIONS · LAST 365 DAYS</span>
                 {leetCalendar.activeDays != null && (
-                  <span className="githubDetailStatus">{leetCalendar.activeDays} ACTIVE DAYS</span>
+                  <span className="githubDetailStatus">
+                    {leetCalendar.activeDays} ACTIVE DAYS · {leetCalendar.streak} CURRENT STREAK
+                  </span>
                 )}
               </div>
               {leetCalendar.days.length > 0 ? (
@@ -858,7 +865,7 @@ function CodingProfiles() {
               <div><span className="cardTag">GITHUB</span><h3>@coder-nikhil011</h3></div>
               <ProfileStatus status={gitData.status} />
             </div>
-            <div className="statsRow">
+            <div className="statsRow githubStatsRow">
               <div className="statBox highlight"><strong>{gitData.repos ?? "—"}</strong><span>PUBLIC REPOS</span></div>
               <div className="statBox"><strong>{gitData.followers ?? "—"}</strong><span>FOLLOWERS</span></div>
               <div className="statBox"><strong>{gitData.following ?? "—"}</strong><span>FOLLOWING</span></div>

@@ -804,6 +804,27 @@ button {
 .contributionDay.level-3 { background: #36a873; }
 .contributionDay.level-4 { background: #16784b; }
 
+.leetcodeCalendar {
+  margin: 20px 0;
+}
+
+.leetcodeCalendarHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.contributionSpacer {
+  visibility: hidden;
+}
+
+.leetcodeContributionGrid .contributionDay.level-1 { background: #ffe0ae; }
+.leetcodeContributionGrid .contributionDay.level-2 { background: #ffc56b; }
+.leetcodeContributionGrid .contributionDay.level-3 { background: #f5a623; }
+.leetcodeContributionGrid .contributionDay.level-4 { background: #c87500; }
+
 .badgeTags, .techStackTags {
   display: flex;
   flex-wrap: wrap;

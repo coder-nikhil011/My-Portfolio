@@ -15,7 +15,7 @@ const projects = [
   {
     no: "01",
     title: "PulseOS",
-    url: "",
+    url: "https://pulseos-app.netlify.app/",
     type: "DESKTOP DIAGNOSTICS & OPTIMIZATION",
     tech: "JAVA · MAVEN",
     description:
@@ -24,7 +24,7 @@ const projects = [
   {
     no: "02",
     title: "CampusSyn",
-    url: "",
+    url: "https://github.com/coder-nikhil011/Campus_Syn",
     type: "CAMPUS MANAGEMENT PLATFORM",
     tech: "MERN STACK",
     description:
@@ -33,7 +33,7 @@ const projects = [
   {
     no: "03",
     title: "MILO",
-    url: "",
+    url: "https://github.com/coder-nikhil011/MILO",
     type: "LOST & FOUND PLATFORM",
     tech: "REACT.JS · FIREBASE",
     description:
@@ -42,7 +42,7 @@ const projects = [
   {
     no: "04",
     title: "Speakly",
-    url: "",
+    url: "https://speakly-steel.vercel.app/",
     type: "AI-POWERED LANGUAGE LEARNING",
     tech: "GENERATIVE AI · PYTHON",
     description:
@@ -51,7 +51,7 @@ const projects = [
   {
     no: "05",
     title: "CodeBridge",
-    url: "",
+    url: "https://github.com/coder-nikhil011/CodeBridge",
     type: "DSA BROWSER EXTENSION",
     tech: "JAVASCRIPT · GEMINI API",
     description:
@@ -59,8 +59,8 @@ const projects = [
   },
   {
     no: "06",
-    title: "ResumeX",
-    url: "",
+    title: "ResumeBuilder",
+    url: "https://github.com/coder-nikhil011/Building_Resume",
     type: "AI-ASSISTED RESUME BUILDER",
     tech: "HTML · CSS · JAVASCRIPT",
     description:
@@ -604,6 +604,12 @@ function CodingProfiles() {
     hard: null,
     ranking: null,
   });
+  const [leetCalendar, setLeetCalendar] = useState({
+    status: "loading",
+    total: null,
+    streak: null,
+    days: [],
+  });
 
   useEffect(() => {
     const controller = new AbortController();
@@ -716,6 +722,63 @@ function CodingProfiles() {
         setLeetStats((current) => ({ ...current, status: "unavailable" }));
       });
 
+    getJson("https://leetcode-api-pied.vercel.app/user/Coding_ninja076/calendar")
+      .then((data) => {
+        const submissionCalendar =
+          typeof data.submissionCalendar === "string"
+            ? JSON.parse(data.submissionCalendar)
+            : data.submissionCalendar;
+        if (
+          !submissionCalendar ||
+          typeof submissionCalendar !== "object" ||
+          Array.isArray(submissionCalendar) ||
+          !Number.isFinite(data.streak) ||
+          !Number.isFinite(data.totalActiveDays)
+        ) {
+          throw new Error("LeetCode calendar response is invalid");
+        }
+
+        const submissionsByDate = new Map(
+          Object.entries(submissionCalendar).map(([timestamp, count]) => {
+            const date = new Date(Number(timestamp) * 1000);
+            if (!Number.isFinite(date.getTime()) || !Number.isFinite(count)) {
+              throw new Error("LeetCode calendar contains invalid submission data");
+            }
+            return [date.toISOString().slice(0, 10), count];
+          }),
+        );
+        const total = [...submissionsByDate.values()].reduce(
+          (sum, count) => sum + count,
+          0,
+        );
+        const endDate = new Date();
+        endDate.setUTCHours(0, 0, 0, 0);
+        const startDate = new Date(endDate);
+        startDate.setUTCDate(startDate.getUTCDate() - 364);
+        const days = Array.from({ length: 365 }, (_, index) => {
+          const date = new Date(startDate);
+          date.setUTCDate(startDate.getUTCDate() + index);
+          const dateKey = date.toISOString().slice(0, 10);
+          return {
+            date: dateKey,
+            count: submissionsByDate.get(dateKey) ?? 0,
+          };
+        });
+        setLeetCalendar({
+          status: "live",
+          total,
+          streak: data.streak,
+          days,
+          activeDays: data.totalActiveDays,
+          firstDayOfWeek: startDate.getUTCDay(),
+        });
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+        console.error("Unable to load LeetCode submission calendar:", error);
+        setLeetCalendar((current) => ({ ...current, status: "unavailable" }));
+      });
+
     return () => controller.abort();
   }, []);
 
@@ -740,6 +803,8 @@ function CodingProfiles() {
             <div className="statsRow">
               <div className="statBox highlight"><strong>{leetStats.solved ?? "—"}</strong><span>SOLVED</span></div>
               <div className="statBox"><strong>{leetStats.ranking?.toLocaleString() ?? "—"}</strong><span>GLOBAL RANK</span></div>
+              <div className="statBox"><strong>{leetCalendar.total?.toLocaleString() ?? "—"}</strong><span>TOTAL CONTRIBUTIONS</span></div>
+              <div className="statBox"><strong>{leetCalendar.streak ?? "—"}</strong><span>DAY STREAK</span></div>
             </div>
             <div className="diffBars">
               <div className="diffCol"><span className="diffLabel">EASY</span><strong className="easyText">{leetStats.easy ?? "—"}</strong><div className="barTrack"><div className="barFill easyBar" style={{width:`${leetStats.solved ? leetStats.easy / leetStats.solved * 100 : 0}%`}} /></div></div>
@@ -749,6 +814,39 @@ function CodingProfiles() {
             {leetStats.status === "unavailable" && (
               <p className="profileNotice">Live stats are temporarily unavailable. Open your profile for the latest data.</p>
             )}
+            <div className="leetcodeCalendar">
+              <div className="leetcodeCalendarHeader">
+                <span className="diffLabel">SUBMISSIONS · LAST 365 DAYS</span>
+                {leetCalendar.activeDays != null && (
+                  <span className="githubDetailStatus">{leetCalendar.activeDays} ACTIVE DAYS</span>
+                )}
+              </div>
+              {leetCalendar.days.length > 0 ? (
+                <div className="contributionScroll" aria-label="LeetCode submissions over the last 365 days">
+                  <div
+                    className="contributionGrid leetcodeContributionGrid"
+                  >
+                    {Array.from({ length: leetCalendar.firstDayOfWeek }, (_, index) => (
+                      <span className="contributionDay contributionSpacer" key={`spacer-${index}`} />
+                    ))}
+                    {leetCalendar.days.map((day) => (
+                      <span
+                        className={`contributionDay level-${day.count === 0 ? 0 : Math.min(4, Math.ceil(day.count / 3))}`}
+                        key={day.date}
+                        title={`${day.count} submissions on ${day.date}`}
+                        aria-label={`${day.count} submissions on ${day.date}`}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="profileNotice">
+                  {leetCalendar.status === "unavailable"
+                    ? "Submission calendar is temporarily unavailable."
+                    : "Loading submission calendar…"}
+                </p>
+              )}
+            </div>
           </div>
           <a href="https://leetcode.com/u/Coding_ninja076" target="_blank" rel="noreferrer" className="profileActionLink">OPEN PROFILE <Arrow /></a>
         </div>

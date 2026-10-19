@@ -569,7 +569,7 @@ function ProfileStatus({ status }) {
   const label = {
     loading: "LOADING",
     live: "LIVE",
-    unavailable: "UNAVAILABLE",
+    unavailable: "API OFFLINE",
   }[status];
 
   return (
@@ -587,6 +587,15 @@ function CodingProfiles() {
     followers: null,
     following: null,
   });
+  const [gitLanguages, setGitLanguages] = useState({
+    status: "loading",
+    items: [],
+  });
+  const [contributions, setContributions] = useState({
+    status: "loading",
+    total: null,
+    days: [],
+  });
   const [leetStats, setLeetStats] = useState({
     status: "loading",
     solved: null,
@@ -594,9 +603,6 @@ function CodingProfiles() {
     medium: null,
     hard: null,
     ranking: null,
-    totalEasy: null,
-    totalMedium: null,
-    totalHard: null,
   });
 
   useEffect(() => {
@@ -631,27 +637,77 @@ function CodingProfiles() {
         setGitData((current) => ({ ...current, status: "unavailable" }));
       });
 
-    getJson("https://alfa-leetcode-api.onrender.com/userProfile/Coding_ninja076")
+    getJson("https://api.github.com/users/coder-nikhil011/repos?type=owner&per_page=100&sort=updated")
+      .then((repos) => {
+        if (!Array.isArray(repos)) {
+          throw new Error("GitHub repositories response is invalid");
+        }
+        const counts = repos
+          .filter((repo) => !repo.fork && typeof repo.language === "string")
+          .reduce((languages, repo) => {
+            languages.set(repo.language, (languages.get(repo.language) ?? 0) + 1);
+            return languages;
+          }, new Map());
+        const items = [...counts]
+          .map(([name, count]) => ({ name, count }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 5);
+        setGitLanguages({ status: "live", items });
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+        console.error("Unable to load GitHub repository languages:", error);
+        setGitLanguages((current) => ({ ...current, status: "unavailable" }));
+      });
+
+    getJson("https://github-contributions-api.jogruber.de/v4/coder-nikhil011?y=last")
       .then((data) => {
         if (
-          !Number.isFinite(data.totalSolved) ||
-          !Number.isFinite(data.easySolved) ||
-          !Number.isFinite(data.mediumSolved) ||
-          !Number.isFinite(data.hardSolved) ||
-          !Number.isFinite(data.ranking)
+          !Number.isFinite(data.total?.lastYear) ||
+          !Array.isArray(data.contributions) ||
+          data.contributions.some(
+            (day) =>
+              typeof day.date !== "string" ||
+              !Number.isFinite(day.count) ||
+              !Number.isFinite(day.level),
+          )
         ) {
+          throw new Error("GitHub contribution response is invalid");
+        }
+        setContributions({
+          status: "live",
+          total: data.total.lastYear,
+          days: data.contributions,
+        });
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+        console.error("Unable to load GitHub contributions:", error);
+        setContributions((current) => ({ ...current, status: "unavailable" }));
+      });
+
+    getJson("https://leetcode-api-pied.vercel.app/user/Coding_ninja076")
+      .then((data) => {
+        const solvedCounts = data.submitStats?.acSubmissionNum;
+        if (!Array.isArray(solvedCounts) || !Number.isFinite(data.profile?.ranking)) {
           throw new Error("LeetCode profile response is missing statistics");
+        }
+        const getSolved = (difficulty) =>
+          solvedCounts.find((entry) => entry.difficulty === difficulty)?.count;
+        const solved = getSolved("All");
+        const easy = getSolved("Easy");
+        const medium = getSolved("Medium");
+        const hard = getSolved("Hard");
+        if (![solved, easy, medium, hard].every(Number.isFinite)) {
+          throw new Error("LeetCode profile response is missing solved counts");
         }
         setLeetStats({
           status: "live",
-          solved: data.totalSolved,
-          easy: data.easySolved,
-          medium: data.mediumSolved,
-          hard: data.hardSolved,
-          ranking: data.ranking,
-          totalEasy: data.totalEasy,
-          totalMedium: data.totalMedium,
-          totalHard: data.totalHard,
+          solved,
+          easy,
+          medium,
+          hard,
+          ranking: data.profile.ranking,
         });
       })
       .catch((error) => {
@@ -686,10 +742,13 @@ function CodingProfiles() {
               <div className="statBox"><strong>{leetStats.ranking?.toLocaleString() ?? "—"}</strong><span>GLOBAL RANK</span></div>
             </div>
             <div className="diffBars">
-              <div className="diffCol"><span className="diffLabel">EASY</span><strong className="easyText">{leetStats.easy ?? "—"}</strong><div className="barTrack"><div className="barFill easyBar" style={{width:`${leetStats.easy && leetStats.totalEasy ? Math.min(100, leetStats.easy / leetStats.totalEasy * 100) : 0}%`}} /></div></div>
-              <div className="diffCol"><span className="diffLabel">MEDIUM</span><strong className="medText">{leetStats.medium ?? "—"}</strong><div className="barTrack"><div className="barFill medBar" style={{width:`${leetStats.medium && leetStats.totalMedium ? Math.min(100, leetStats.medium / leetStats.totalMedium * 100) : 0}%`}} /></div></div>
-              <div className="diffCol"><span className="diffLabel">HARD</span><strong className="hardText">{leetStats.hard ?? "—"}</strong><div className="barTrack"><div className="barFill hardBar" style={{width:`${leetStats.hard && leetStats.totalHard ? Math.min(100, leetStats.hard / leetStats.totalHard * 100) : 0}%`}} /></div></div>
+              <div className="diffCol"><span className="diffLabel">EASY</span><strong className="easyText">{leetStats.easy ?? "—"}</strong><div className="barTrack"><div className="barFill easyBar" style={{width:`${leetStats.solved ? leetStats.easy / leetStats.solved * 100 : 0}%`}} /></div></div>
+              <div className="diffCol"><span className="diffLabel">MEDIUM</span><strong className="medText">{leetStats.medium ?? "—"}</strong><div className="barTrack"><div className="barFill medBar" style={{width:`${leetStats.solved ? leetStats.medium / leetStats.solved * 100 : 0}%`}} /></div></div>
+              <div className="diffCol"><span className="diffLabel">HARD</span><strong className="hardText">{leetStats.hard ?? "—"}</strong><div className="barTrack"><div className="barFill hardBar" style={{width:`${leetStats.solved ? leetStats.hard / leetStats.solved * 100 : 0}%`}} /></div></div>
             </div>
+            {leetStats.status === "unavailable" && (
+              <p className="profileNotice">Live stats are temporarily unavailable. Open your profile for the latest data.</p>
+            )}
           </div>
           <a href="https://leetcode.com/u/Coding_ninja076" target="_blank" rel="noreferrer" className="profileActionLink">OPEN PROFILE <Arrow /></a>
         </div>
@@ -702,12 +761,67 @@ function CodingProfiles() {
               <ProfileStatus status={gitData.status} />
             </div>
             <div className="statsRow">
-              <div className="statBox highlight"><strong>{gitData.repos ?? "—"}</strong><span>REPOS</span></div>
+              <div className="statBox highlight"><strong>{gitData.repos ?? "—"}</strong><span>PUBLIC REPOS</span></div>
               <div className="statBox"><strong>{gitData.followers ?? "—"}</strong><span>FOLLOWERS</span></div>
               <div className="statBox"><strong>{gitData.following ?? "—"}</strong><span>FOLLOWING</span></div>
             </div>
-            <div className="techStackTags">
-              <span>MERN STACK</span><span>DSA</span><span>GENAI</span><span>OPEN SOURCE</span>
+            <div className="githubDetails">
+              <div className="githubDetailHeader">
+                <span className="diffLabel">TOP LANGUAGES · ORIGINAL REPOS</span>
+                <span className="githubDetailStatus">
+                  {gitLanguages.status === "loading" ? "LOADING" : gitLanguages.status === "live" ? "LIVE" : "UNAVAILABLE"}
+                </span>
+              </div>
+              {gitLanguages.items.length > 0 ? (
+                <div className="languageList">
+                  {gitLanguages.items.map(({ name, count }) => (
+                    <div className="languageItem" key={name}>
+                      <span>{name}</span>
+                      <div className="barTrack">
+                        <div
+                          className="barFill languageBar"
+                          style={{ width: `${(count / gitLanguages.items[0].count) * 100}%` }}
+                        />
+                      </div>
+                      <strong>{count}</strong>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="profileNotice">
+                  {gitLanguages.status === "unavailable"
+                    ? "Repository language data is temporarily unavailable."
+                    : gitLanguages.status === "live"
+                      ? "No language data found in original public repositories."
+                      : "Loading repository languages…"}
+                </p>
+              )}
+              <div className="contributionHeader">
+                <span className="diffLabel">CONTRIBUTIONS · LAST YEAR</span>
+                <strong>{contributions.total?.toLocaleString() ?? "—"}</strong>
+              </div>
+              {contributions.days.length > 0 ? (
+                <div className="contributionScroll" aria-label="GitHub contributions over the last year">
+                  <div className="contributionGrid">
+                    {contributions.days.map((day) => (
+                      <span
+                        className={`contributionDay level-${Math.min(4, Math.max(0, day.level))}`}
+                        key={day.date}
+                        title={`${day.count} contributions on ${day.date}`}
+                        aria-label={`${day.count} contributions on ${day.date}`}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="profileNotice">
+                  {contributions.status === "unavailable"
+                    ? "Contribution data is temporarily unavailable."
+                    : contributions.status === "live"
+                      ? "No contribution history is available."
+                      : "Loading contribution history…"}
+                </p>
+              )}
             </div>
           </div>
           <a href="https://github.com/coder-nikhil011" target="_blank" rel="noreferrer" className="profileActionLink">OPEN PROFILE <Arrow /></a>

@@ -720,6 +720,90 @@ button {
 .medBar { background: #ffb800; }
 .hardBar { background: #e52a20; }
 
+.profileNotice {
+  margin: 0 0 16px;
+  color: #777;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.githubDetails {
+  margin: 2px 0 20px;
+}
+
+.githubDetailHeader,
+.contributionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.githubDetailStatus {
+  font-family: monospace;
+  font-size: 7px;
+  letter-spacing: .12em;
+  color: #777;
+}
+
+.languageList {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 18px;
+}
+
+.languageItem {
+  display: grid;
+  grid-template-columns: minmax(64px, 1fr) 2fr 22px;
+  align-items: center;
+  gap: 9px;
+  font-size: 10px;
+}
+
+.languageItem strong {
+  font-family: monospace;
+  font-size: 9px;
+  font-weight: 400;
+  text-align: right;
+  color: #777;
+}
+
+.languageBar {
+  background: var(--red);
+}
+
+.contributionHeader {
+  margin-bottom: 10px;
+}
+
+.contributionHeader strong {
+  font-size: 13px;
+}
+
+.contributionScroll {
+  overflow-x: auto;
+  padding: 2px 0 7px;
+}
+
+.contributionGrid {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(7, 9px);
+  grid-auto-columns: 9px;
+  gap: 3px;
+  width: max-content;
+}
+
+.contributionDay {
+  border-radius: 2px;
+  background: #e8e8e2;
+}
+
+.contributionDay.level-1 { background: #b8dec9; }
+.contributionDay.level-2 { background: #76c69b; }
+.contributionDay.level-3 { background: #36a873; }
+.contributionDay.level-4 { background: #16784b; }
+
 .badgeTags, .techStackTags {
   display: flex;
   flex-wrap: wrap;

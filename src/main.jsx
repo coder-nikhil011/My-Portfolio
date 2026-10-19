@@ -1257,7 +1257,10 @@ function Typewriter({ text, trigger = true, onComplete }) {
   const [currentText, setCurrentText] = useState("");
 
   useEffect(() => {
-    if (!trigger) return;
+    if (!trigger) {
+      setCurrentText(""); 
+      return;
+    }
 
     let isMounted = true;
     let timeout;
@@ -1266,7 +1269,7 @@ function Typewriter({ text, trigger = true, onComplete }) {
       if (idx < text.length) {
         if (!isMounted) return;
         setCurrentText(text.slice(0, idx + 1));
-        timeout = setTimeout(() => type(idx + 1), 100);
+        timeout = setTimeout(() => type(idx + 1), 200); // Slower speed
       } else if (onComplete && isMounted) {
         onComplete();
       }
@@ -1277,7 +1280,7 @@ function Typewriter({ text, trigger = true, onComplete }) {
       isMounted = false;
       clearTimeout(timeout);
     };
-  }, [trigger]);
+  }, [trigger, text, onComplete]);
 
   return <span>{currentText}</span>;
 }
@@ -1285,6 +1288,19 @@ function Typewriter({ text, trigger = true, onComplete }) {
 function App() {
 
   const [showKumar, setShowKumar] = useState(false);
+  const [loopKey, setLoopKey] = useState(0);
+
+  const handleComplete = () => {
+    setShowKumar(true);
+  };
+
+  const handleKumarComplete = () => {
+    setTimeout(() => {
+      setShowKumar(false);
+      setLoopKey(prev => prev + 1);
+    }, 2000);
+  };
+
   const heroRef = useRef(null);
   const aboutRef = useRef(null);
   const skillsRef = useRef(null);
@@ -1392,12 +1408,12 @@ function App() {
             SOFTWARE ENGINEER / FULL STACK / AI & SYSTEMS
           </div>
 
-          <h1>
+          <h1 key={loopKey}>
 
             <span className="heroLine">
               <Typewriter 
                 text="NIKHIL" 
-                onComplete={() => setShowKumar(true)} 
+                onComplete={handleComplete} 
               />
             </span>
 
@@ -1405,6 +1421,7 @@ function App() {
               <Typewriter 
                 text="KUMAR" 
                 trigger={showKumar} 
+                onComplete={handleKumarComplete} 
               />
             </span>
 

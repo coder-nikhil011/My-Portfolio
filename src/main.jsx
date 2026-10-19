@@ -1259,19 +1259,25 @@ function Typewriter({ text, trigger = true, onComplete }) {
   useEffect(() => {
     if (!trigger) return;
 
+    let isMounted = true;
     let timeout;
+    
     const type = (idx) => {
       if (idx < text.length) {
-        setCurrentText((prev) => prev + text[idx]);
+        if (!isMounted) return;
+        setCurrentText(text.slice(0, idx + 1));
         timeout = setTimeout(() => type(idx + 1), 100);
-      } else if (onComplete) {
+      } else if (onComplete && isMounted) {
         onComplete();
       }
     };
 
     type(0);
-    return () => clearTimeout(timeout);
-  }, [trigger, text, onComplete]);
+    return () => {
+      isMounted = false;
+      clearTimeout(timeout);
+    };
+  }, [trigger]);
 
   return <span>{currentText}</span>;
 }

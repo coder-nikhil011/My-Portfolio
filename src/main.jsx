@@ -1269,7 +1269,7 @@ function Typewriter({ text, trigger = true, onComplete }) {
       if (idx < text.length) {
         if (!isMounted) return;
         setCurrentText(text.slice(0, idx + 1));
-        timeout = setTimeout(() => type(idx + 1), 200); // Slower speed
+        timeout = setTimeout(() => type(idx + 1), 150);
       } else if (onComplete && isMounted) {
         onComplete();
       }
@@ -1280,7 +1280,7 @@ function Typewriter({ text, trigger = true, onComplete }) {
       isMounted = false;
       clearTimeout(timeout);
     };
-  }, [trigger, text, onComplete]);
+  }, [trigger, text]);
 
   return <span>{currentText}</span>;
 }
@@ -1290,16 +1290,16 @@ function App() {
   const [showKumar, setShowKumar] = useState(false);
   const [loopKey, setLoopKey] = useState(0);
 
-  const handleComplete = () => {
+  const handleComplete = useCallback(() => {
     setShowKumar(true);
-  };
+  }, []);
 
-  const handleKumarComplete = () => {
+  const handleKumarComplete = useCallback(() => {
     setTimeout(() => {
       setShowKumar(false);
       setLoopKey(prev => prev + 1);
     }, 2000);
-  };
+  }, []);
 
   const heroRef = useRef(null);
   const aboutRef = useRef(null);

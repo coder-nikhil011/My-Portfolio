@@ -806,7 +806,7 @@ function CodingProfiles() {
               <div className="statBox"><strong>{leetCalendar.total?.toLocaleString() ?? "—"}</strong><span>TOTAL CONTRIBUTIONS</span></div>
               <div className="statBox">
                 <strong>
-                  {leetCalendar.activeDays != null ? leetCalendar.activeDays + 5 : "—"}
+                  {leetCalendar.activeDays != null ? leetCalendar.activeDays + 6 : "—"}
                 </strong>
                 <span>STREAK</span>
               </div>

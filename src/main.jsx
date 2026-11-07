@@ -15,7 +15,7 @@ const projects = [
   {
     no: "01",
     title: "PulseOS",
-    url: "https://pulseos-app.netlify.app/",
+    url: "https://pulseos-dev.netlify.app/",
     type: "DESKTOP DIAGNOSTICS & OPTIMIZATION",
     tech: "JAVA · MAVEN",
     description:
